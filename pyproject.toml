@@ -11,6 +11,7 @@ torchvision = "^0.7.0"
 gym = "^0.17.2"
 jupyter = "^1.0.0"
 numpy = "^1.19.1"
+matplotlib = "^3.3.0"
 
 [tool.poetry.dev-dependencies]
 
