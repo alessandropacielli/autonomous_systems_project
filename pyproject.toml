@@ -3,13 +3,14 @@ name = "autonomous_systems_project"
 version = "0.1.0"
 description = ""
 authors = ["Alessandro Pacielli <alessandropacielli@gmail.com>"]
-license = "MIT"
 
 [tool.poetry.dependencies]
 python = "^3.7"
-torch = "^1.5.1"
-matplotlib = "^3.2.2"
+torch = "^1.6.0"
+torchvision = "^0.7.0"
+gym = "^0.17.2"
 jupyter = "^1.0.0"
+numpy = "^1.19.1"
 
 [tool.poetry.dev-dependencies]
 
