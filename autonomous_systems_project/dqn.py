@@ -8,13 +8,13 @@ class DQN(nn.Module):
         super(DQN, self).__init__()
 
         """
-    Construct a new DQN object.
-    
-    :param h: The height of the image.
-    :param w: The width of the image.
-    :param input_channels: The number of channels of the image (e.g. 3 for RGB images)
-    :param outputs: The number of outputs.
-    """
+        Construct a new DQN object.
+        
+        :param h: The height of the image.
+        :param w: The width of the image.
+        :param input_channels: The number of channels of the image (e.g. 3 for RGB images)
+        :param outputs: The number of outputs.
+        """
 
         self.input_channels = input_channels
         self.input_height = h
@@ -29,7 +29,8 @@ class DQN(nn.Module):
         self.bn3 = nn.BatchNorm2d(64)
 
         # (Size - Kernel size + 2 * Padding) // Stride --> see https://cs231n.github.io/convolutional-networks/
-        def conv2d_size_out(size, kernel=5, stride=2):
+        def conv2d_size_out(size, kernel=5, stride=2) -> int:
+            # Here we have no padding --> TODO handle padding
             return (size - kernel) // stride + 1
 
         # Compute convolution output dimensions
@@ -43,10 +44,12 @@ class DQN(nn.Module):
         self.head = nn.Linear(self.linear_input_size, self.outputs)
 
     # NN forward pass
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor) -> float:
         """
-    Forward pass of the network
-    """
+        Forward pass of the network
+
+        Input tensors should have the following shape: (batch_size, image_channels, image_height, image_width)
+        """
         # TODO should we use maxpooling? or any other pooling?
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
