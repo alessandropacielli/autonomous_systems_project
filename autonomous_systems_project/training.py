@@ -1,6 +1,7 @@
 import math
 
 import gym
+import numpy as np
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
@@ -36,8 +37,8 @@ def train_dqn(
     eps_start: float = 0.9,
     eps_end: float = 0.05,
     eps_decay: int = 200,
-    target_update: int = 10,
     target_net: DQN = None,
+    target_update: int = 10,
 ):
     """
     Trains a DQN model
@@ -71,13 +72,19 @@ def train_dqn(
     # Init exploration rate
     eps_current = eps_start
 
+    # Init total rewards
+    rewards = []
+
     for episode in range(num_episodes):
 
         # Reset environment
         state = torch.tensor(env.reset(), device=device, dtype=torch.float)
         done = False
+        rewards.append(0)
 
         while not done:
+            if render:
+                env.render()
 
             # Update epsilon
             eps_current = update_epsilon(
@@ -102,6 +109,9 @@ def train_dqn(
 
             # Perform transition
             next_state, reward, done, _ = env.step(action)
+
+            # Save reward for stats
+            rewards[episode] += reward
 
             # Turn into torch tensors
             action = torch.tensor([action], device=device, dtype=torch.long)
@@ -157,6 +167,7 @@ def train_dqn(
                 next_state_values[non_final_mask] = (
                     target_net(non_final_next_states).max(1)[0].detach()
                 )
+
                 # Compute the expected Q values
                 expected_state_action_values = (
                     next_state_values * gamma
@@ -173,6 +184,21 @@ def train_dqn(
                 for param in policy_net.parameters():
                     param.grad.data.clamp_(-1, 1)
                 optimizer.step()
+
+                # TODO implement a callback system
+
+        # Episode done
+        print(
+            "Episode %d/%d - total steps %d  - reward %f - avg total rewards %f - epsilon %f"
+            % (
+                episode + 1,
+                num_episodes,
+                total_steps,
+                rewards[episode],
+                np.mean(rewards),
+                eps_current,
+            )
+        )
 
         # Update target
         if episode % target_update == 0:
