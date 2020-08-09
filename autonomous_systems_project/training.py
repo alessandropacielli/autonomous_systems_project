@@ -2,7 +2,7 @@ import math
 
 import gym
 import torch
-import torch.functional as F
+import torch.nn.functional as F
 import torch.optim as optim
 
 from autonomous_systems_project.dqn import DQN
@@ -104,8 +104,8 @@ def train_dqn(
             next_state, reward, done, _ = env.step(action)
 
             # Turn into torch tensors
-            action = torch.tensor([action], device=device)
-            reward = torch.tensor([reward], device=device)
+            action = torch.tensor([action], device=device, dtype=torch.long)
+            reward = torch.tensor([reward], device=device, dtype=torch.float)
             if not done:
                 next_state = torch.tensor(next_state, device=device, dtype=torch.float)
 
@@ -135,18 +135,17 @@ def train_dqn(
                     device=device,
                     dtype=torch.bool,
                 )
-                non_final_next_states = torch.cat(
+                non_final_next_states = torch.stack(
                     [s for s in batch.next_state if s is not None]
                 )
 
                 state_batch = torch.stack(batch.state)
-                action_batch = torch.cat(batch.action)
+                action_batch = torch.stack(batch.action)
                 reward_batch = torch.cat(batch.reward)
 
                 # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
                 # columns of actions taken. These are the actions which would've been taken
                 # for each batch state according to policy_net
-                print(policy_net(state_batch))
                 state_action_values = policy_net(state_batch).gather(1, action_batch)
 
                 # Compute V(s_{t+1}) for all next states.
