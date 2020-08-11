@@ -7,10 +7,6 @@ from autonomous_systems_project.policy import epsilon_greedy
 from autonomous_systems_project.preprocessing import crop, rescale
 from autonomous_systems_project.training import train_dqn
 
-rescale_fn = lambda observation: cv2.resize(
-    observation, (84, 84), interpolation=cv2.INTER_AREA
-)
-
 # Number of frames for framestack
 frames = 4
 
