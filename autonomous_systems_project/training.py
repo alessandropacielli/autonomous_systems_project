@@ -52,6 +52,7 @@ def train_dqn(
             policy_net.input_height,
             policy_net.input_width,
             policy_net.input_channels,
+            policy_net.hidden_neurons,
             policy_net.outputs,
         )
         target_net.load_state_dict(policy_net.state_dict())

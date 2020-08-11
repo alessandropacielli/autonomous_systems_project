@@ -15,7 +15,7 @@ env = GrayScaleObservation(env)  # Black & white filter
 env = TransformObservation(env, crop(31, -1, 7, -8))  # Crop image
 env = TransformObservation(env, rescale((84, 84)))  # Rescale to 84 x 84
 env = FrameStack(env, frames)  # Stack consecutive frames
-policy_net = DQN(84, 84, 4, env.action_space.n)
+policy_net = DQN(84, 84, 4, 512, env.action_space.n)
 try:
     train_dqn(policy_net, env, epsilon_greedy, render=True, eps_decay=10000)
 finally:
