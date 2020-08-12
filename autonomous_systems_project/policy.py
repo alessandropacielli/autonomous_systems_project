@@ -10,6 +10,6 @@ def epsilon_greedy(
 ) -> int:
     if random.random() > epsilon:
         with torch.no_grad():
-            return policy_network(state).max(1)[1].view(1, 1).item()
+            return policy_network(state).argmax().item()
     else:
         return env.action_space.sample()
