@@ -1,6 +1,7 @@
 import math
 
 import gym
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -28,7 +29,7 @@ def train_dqn(
     policy_net: DQN,
     env: gym.Env,
     collection_policy=epsilon_greedy,
-    optimizer_fn: optim.Optimizer = optim.RMSprop,
+    optimizer_fn: optim.Optimizer = optim.Adam,
     num_episodes: int = 100,
     render: bool = False,
     memory=RandomReplayMemory(10000),
@@ -65,7 +66,7 @@ def train_dqn(
     target_net.eval()
 
     # Create optimizer for policy net
-    optimizer = optimizer_fn(policy_net.parameters())
+    optimizer = optimizer_fn(policy_net.parameters(), lr=0.00025)
 
     # Count steps for exploration rate updates
     total_steps = 0
@@ -82,6 +83,8 @@ def train_dqn(
         state = torch.tensor(env.reset(), device=device, dtype=torch.float)
         done = False
         rewards.append(0)
+
+        episode_loss = []
 
         while not done:
             if render:
@@ -179,18 +182,18 @@ def train_dqn(
                     state_action_values, expected_state_action_values.unsqueeze(1)
                 )
 
+                episode_loss.append(loss.item())
+
                 # Optimize the model
                 optimizer.zero_grad()
                 loss.backward()
-                for param in policy_net.parameters():
-                    param.grad.data.clamp_(-1, 1)
                 optimizer.step()
 
                 # TODO implement a callback system
 
         # Episode done
         print(
-            "Episode %d/%d - total steps %d  - reward %f - avg total rewards %f - epsilon %f"
+            "Episode %d/%d - total steps %d  - reward %f - avg total rewards %f - epsilon %f - loss %f"
             % (
                 episode + 1,
                 num_episodes,
@@ -198,6 +201,7 @@ def train_dqn(
                 rewards[episode],
                 np.mean(rewards),
                 eps_current,
+                np.mean(episode_loss),
             )
         )
 
