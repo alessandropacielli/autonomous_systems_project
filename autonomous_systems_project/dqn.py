@@ -24,11 +24,11 @@ class DQN(nn.Module):
         self.hidden_neurons = hidden_neurons
         self.outputs = outputs
 
-        self.conv1 = nn.Conv2d(self.input_channels, 16, kernel_size=5, stride=2)
-        self.bn1 = nn.BatchNorm2d(16)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=5, stride=2)
-        self.bn2 = nn.BatchNorm2d(32)
-        self.conv3 = nn.Conv2d(32, 64, kernel_size=5, stride=2)
+        self.conv1 = nn.Conv2d(self.input_channels, 32, kernel_size=8, stride=4)
+        self.bn1 = nn.BatchNorm2d(32)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
+        self.bn2 = nn.BatchNorm2d(64)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
         self.bn3 = nn.BatchNorm2d(64)
 
         # (Size - Kernel size + 2 * Padding) // Stride --> see https://cs231n.github.io/convolutional-networks/
@@ -37,8 +37,24 @@ class DQN(nn.Module):
             return (size - kernel) // stride + 1
 
         # Compute convolution output dimensions
-        convw = conv2d_size_out(conv2d_size_out(conv2d_size_out(self.input_width)))
-        convh = conv2d_size_out(conv2d_size_out(conv2d_size_out(self.input_height)))
+        convw = conv2d_size_out(
+            conv2d_size_out(
+                conv2d_size_out(self.input_width, kernel=8, stride=4),
+                kernel=4,
+                stride=2,
+            ),
+            kernel=3,
+            stride=1,
+        )
+        convh = conv2d_size_out(
+            conv2d_size_out(
+                conv2d_size_out(self.input_height, kernel=8, stride=4),
+                kernel=4,
+                stride=2,
+            ),
+            kernel=3,
+            stride=1,
+        )
 
         # Conv output width * conv output height * conv output channels
         self.linear_input_size = convw * convh * 64
