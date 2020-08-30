@@ -39,8 +39,8 @@ class AtariDQN(nn.Module):
 
         linear_input = convh * convw * 64
 
-        self.fc1 = nn.Linear(linear_input, 256)
-        self.head = nn.Linear(256, num_actions)
+        self.fc1 = nn.Linear(linear_input, 512)
+        self.head = nn.Linear(512, num_actions)
 
     def forward(self, x):
         x = F.leaky_relu(self.bn1(self.conv1(x)))

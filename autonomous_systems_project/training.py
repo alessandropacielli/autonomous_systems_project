@@ -7,7 +7,6 @@ import torch
 import torch.nn.functional as F
 import torch.optim as optim
 
-from autonomous_systems_project.dqn import DQN
 from autonomous_systems_project.memory import RandomReplayMemory, Transition
 from autonomous_systems_project.policy import epsilon_greedy
 
@@ -15,14 +14,10 @@ from autonomous_systems_project.policy import epsilon_greedy
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
-def update_epsilon(
-    eps_curr: float,
-    eps_start: float,
-    eps_end: float,
-    eps_decay: float,
-    total_steps: int,
-):
-    return eps_end + (eps_start - eps_end) * math.exp(-1.0 * total_steps / eps_decay)
+def update_epsilon(epsilon_start, epsilon_end, epsilon_steps, total_steps):
+    return epsilon_end + (epsilon_start - epsilon_end) * math.exp(
+        -1.0 * total_steps / epsilon_steps
+    )
 
 
 def optimize_model(
