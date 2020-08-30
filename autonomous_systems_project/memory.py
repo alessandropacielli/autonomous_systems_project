@@ -1,6 +1,8 @@
 import random
 from collections import namedtuple
 
+import torch
+
 Transition = namedtuple("Transition", ("state", "action", "reward", "next_state"))
 
 
@@ -18,7 +20,10 @@ class RandomReplayMemory(object):
         self.position = (self.position + 1) % self.capacity
 
     def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
+        # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
+        # detailed explanation). This converts batch-array of Transitions
+        # to Transition of batch-arrays.
+        return Transition(*zip(*random.sample(self.memory, batch_size)))
 
     def __len__(self):
         return len(self.memory)

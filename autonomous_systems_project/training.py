@@ -25,186 +25,150 @@ def update_epsilon(
     return eps_end + (eps_start - eps_end) * math.exp(-1.0 * total_steps / eps_decay)
 
 
-def train_dqn(
-    policy_net: DQN,
-    env: gym.Env,
-    collection_policy=epsilon_greedy,
-    optimizer_fn: optim.Optimizer = optim.Adam,
-    num_episodes: int = 100,
-    render: bool = False,
-    memory=RandomReplayMemory(10000),
-    batch_size: int = 128,
-    gamma: float = 0.999,
-    eps_start: float = 0.9,
-    eps_end: float = 0.05,
-    eps_decay: int = 200,
-    target_net: DQN = None,
-    target_update: int = 10,
+def optimize_model(
+    policy_net,
+    target_net,
+    optimizer,
+    memory,
+    batch_size,
+    gamma,
+    frame_stack=4,
+    frame_h=84,
+    frame_w=84,
 ):
-    """
-    Trains a DQN model
-    """
+    # Sample replay buffer
+    state_batch, action_batch, reward_batch, next_state_batch = memory.sample(
+        batch_size
+    )
+
+    # Convert transitions to tensors
+    state_batch = torch.stack(state_batch)
+    state_batch = state_batch.view((batch_size, frame_stack, frame_h, frame_w))
+    action_batch = torch.stack(action_batch)
+    reward_batch = torch.stack(reward_batch)
+    non_final_next_states = torch.cat([s for s in next_state_batch if s is not None])
+
+    # Compute a mask of non-final states and concatenate the batch elements
+    # (a final state would've been the one after which simulation ended)
+    non_final_mask = torch.tensor(
+        list(map(lambda s: s is not None, next_state_batch)), dtype=torch.bool
+    )
+
+    # Obtain the action values for the states in the batch
+    state_action_values = policy_net(state_batch)
+
+    # Select the values of the actions that were taken, i.e. Q(S_t, A_t)
+    state_action_values = state_action_values.gather(
+        1, action_batch.reshape((batch_size, 1))
+    )
+
+    # Compute the max q-values for non final next states only
+    next_state_values = torch.zeros(batch_size, device=device)
+    next_state_values[non_final_mask] = (
+        target_net(non_final_next_states).max(dim=1)[0].float().detach()
+    )
+
+    # Compute the q-learning target: R_t + gamma * max_a(Q(S_t+1, a))
+    expected_state_action_values = reward_batch + gamma * next_state_values
+
+    # Compute Huber loss
+    loss = F.smooth_l1_loss(
+        state_action_values, expected_state_action_values.unsqueeze(1)
+    )
+
+    # Optimize the model
+    optimizer.zero_grad()
+    loss.backward()
+    optimizer.step()
+
+    return loss
+
+
+def train_dqn(
+    env,
+    policy_net,
+    target_net,
+    optimizer,
+    memory,
+    frame_h=84,
+    frame_w=84,
+    frame_stack=4,
+    target_update=10,
+    batch_size=32,
+    episodes=100,
+    gamma=0.99,
+    epsilon_start=0.9,
+    epsilon_end=0.05,
+    epsilon_steps=1000000,
+):
 
     # TODO handle preconditions (assert)
-
-    # If no target network is given, build a copy of the policy network and load its weights
-    if target_net is None:
-        target_net = DQN(
-            policy_net.input_height,
-            policy_net.input_width,
-            policy_net.input_channels,
-            policy_net.hidden_neurons,
-            policy_net.outputs,
-        )
-        target_net.load_state_dict(policy_net.state_dict())
 
     # Send both networks to device
     policy_net.to(device)
     target_net.to(device)
 
-    # Target net should be in eval mode (no grads are computed)
+    # Do not compute gradients for target_net
     target_net.eval()
 
-    # Create optimizer for policy net
-    optimizer = optimizer_fn(policy_net.parameters(), lr=0.00025)
-
-    # Count steps for exploration rate updates
+    total_rewards = []
     total_steps = 0
 
-    # Init exploration rate
-    eps_current = eps_start
+    epsilon = epsilon_start
 
-    # Init total rewards
-    rewards = []
+    for episode in range(episodes):
 
-    for episode in range(num_episodes):
-
-        # Reset environment
-        state = torch.tensor(env.reset(), device=device, dtype=torch.float)
         done = False
-        rewards.append(0)
-
-        episode_loss = []
-
-        while not done:
-            if render:
-                env.render()
-
-            # Update epsilon
-            eps_current = update_epsilon(
-                eps_current, eps_start, eps_end, eps_decay, total_steps
-            )
-
-            # Increment steps
-            total_steps += 1
-
-            # Choose next action
-            action = collection_policy(
-                state.reshape(
-                    1,
-                    policy_net.input_channels,
-                    policy_net.input_height,
-                    policy_net.input_width,
-                ),
-                env,
-                policy_net,
-                eps_current,
-            )
-
-            # Perform transition
-            next_state, reward, done, _ = env.step(action)
-
-            # Save reward for stats
-            rewards[episode] += reward
-
-            # Turn into torch tensors
-            action = torch.tensor([action], device=device, dtype=torch.long)
-            reward = torch.tensor([reward], device=device, dtype=torch.float)
-            if not done:
-                next_state = torch.tensor(next_state, device=device, dtype=torch.float)
-
-                # Move to next state
-                state = next_state
-            else:
-                next_state = None
-
-            # Remember transition
-            memory.push(state, action, reward, next_state)
-
-            # Optimize model
-            if len(memory) >= batch_size:
-
-                # Sample replay buffer
-                transitions = memory.sample(batch_size)
-
-                # Transpose the batch (see https://stackoverflow.com/a/19343/3343043 for
-                # detailed explanation). This converts batch-array of Transitions
-                # to Transition of batch-arrays.
-                batch = Transition(*zip(*transitions))
-
-                # Compute a mask of non-final states and concatenate the batch elements
-                # (a final state would've been the one after which simulation ended)
-                non_final_mask = torch.tensor(
-                    tuple(map(lambda s: s is not None, batch.next_state)),
-                    device=device,
-                    dtype=torch.bool,
-                )
-                non_final_next_states = torch.stack(
-                    [s for s in batch.next_state if s is not None]
-                )
-
-                state_batch = torch.stack(batch.state)
-                action_batch = torch.stack(batch.action)
-                reward_batch = torch.cat(batch.reward)
-
-                # Compute Q(s_t, a) - the model computes Q(s_t), then we select the
-                # columns of actions taken. These are the actions which would've been taken
-                # for each batch state according to policy_net
-                state_action_values = policy_net(state_batch).gather(1, action_batch)
-
-                # Compute V(s_{t+1}) for all next states.
-                # Expected values of actions for non_final_next_states are computed based
-                # on the "older" target_net; selecting their best reward with max(1)[0].
-                # This is merged based on the mask, such that we'll have either the expected
-                # state value or 0 in case the state was final.
-                next_state_values = torch.zeros(batch_size, device=device)
-                next_state_values[non_final_mask] = (
-                    target_net(non_final_next_states).max(1)[0].detach()
-                )
-
-                # Compute the expected Q values
-                expected_state_action_values = (
-                    next_state_values * gamma
-                ) + reward_batch
-
-                # Compute Huber loss
-                loss = F.smooth_l1_loss(
-                    state_action_values, expected_state_action_values.unsqueeze(1)
-                )
-
-                episode_loss.append(loss.item())
-
-                # Optimize the model
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-
-                # TODO implement a callback system
-
-        # Episode done
-        print(
-            "Episode %d/%d - total steps %d  - reward %f - avg total rewards %f - epsilon %f - loss %f"
-            % (
-                episode + 1,
-                num_episodes,
-                total_steps,
-                rewards[episode],
-                np.mean(rewards),
-                eps_current,
-                np.mean(episode_loss),
-            )
+        state = (
+            torch.tensor(env.reset(), device=device)
+            .float()
+            .view(1, frame_stack, frame_h, frame_w)
         )
 
-        # Update target
-        if episode % target_update == 0:
-            target_net.load_state_dict(policy_net.state_dict())
+        total_rewards.append(0)
+        loss = 0
+
+        while not done:
+
+            # env.render()
+            action = epsilon_greedy(state, env, policy_net, epsilon)
+
+            next_state, reward, done, _ = env.step(action)
+
+            total_rewards[episode] += reward
+
+            action_tensor = torch.tensor(action, device=device, dtype=torch.int64)
+            reward_tensor = torch.tensor(reward, device=device, dtype=torch.float)
+            next_state = torch.tensor(
+                next_state, device=device, dtype=torch.float
+            ).view(1, frame_stack, frame_h, frame_w)
+            if done:
+                next_state = None
+
+            memory.push(state, action_tensor, reward_tensor, next_state)
+
+            state = next_state
+
+            if len(memory) >= batch_size:
+                loss = optimize_model(
+                    policy_net, target_net, optimizer, memory, batch_size, gamma
+                )
+
+            if total_steps % target_update == 0:
+                target_net.load_state_dict(policy_net.state_dict())
+
+            total_steps += 1
+            epsilon = update_epsilon(
+                epsilon_start, epsilon_end, epsilon_steps, total_steps
+            )
+        print(
+            "{}/{} Total steps: {} Episode reward: {} Average reward: {} Loss: {} Epsilon: {}".format(
+                episode,
+                episodes,
+                total_steps,
+                total_rewards[episode],
+                np.mean(total_rewards),
+                loss,
+                epsilon,
+            )
+        )
