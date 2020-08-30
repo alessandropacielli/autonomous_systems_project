@@ -3,80 +3,49 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class DQN(nn.Module):
+class AtariDQN(nn.Module):
     def __init__(
-        self, h: int, w: int, input_channels: int, hidden_neurons: int, outputs: int
+        self, frame_h: int, frame_w: int, input_channels: int, num_actions: int
     ):
-        super(DQN, self).__init__()
-
         """
         Construct a new DQN object.
         
-        :param h: The height of the image.
-        :param w: The width of the image.
-        :param input_channels: The number of channels of the image (e.g. 3 for RGB images)
-        :param outputs: The number of outputs.
+        :param frame_h: The height of the input frame in pixels.
+        :param framframe_e_w: The width of the input frame in pixels.
+        :param input_channels: 
+            The number of channels of the image (e.g. 3 for RGB images, 4 for b&w frame-stacked environments)
+        :param num_actions: The number of possible actions (outputs of the net).
         """
+        super(AtariDQN, self).__init__()
 
-        self.input_channels = input_channels
-        self.input_height = h
-        self.input_width = w
-        self.hidden_neurons = hidden_neurons
-        self.outputs = outputs
-
-        self.conv1 = nn.Conv2d(self.input_channels, 32, kernel_size=8, stride=4)
+        self.conv1 = nn.Conv2d(input_channels, 32, kernel_size=6, stride=3)
         self.bn1 = nn.BatchNorm2d(32)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
         self.bn2 = nn.BatchNorm2d(64)
-        self.conv3 = nn.Conv2d(64, 64, kernel_size=3, stride=1)
+        self.conv3 = nn.Conv2d(64, 64, kernel_size=4, stride=1)
         self.bn3 = nn.BatchNorm2d(64)
 
         # (Size - Kernel size + 2 * Padding) // Stride --> see https://cs231n.github.io/convolutional-networks/
         def conv2d_size_out(size, kernel=5, stride=2) -> int:
-            # Here we have no padding --> TODO handle padding
             return (size - kernel) // stride + 1
 
-        # Compute convolution output dimensions
-        convw = conv2d_size_out(
-            conv2d_size_out(
-                conv2d_size_out(self.input_width, kernel=8, stride=4),
-                kernel=4,
-                stride=2,
-            ),
-            kernel=3,
-            stride=1,
-        )
-        convh = conv2d_size_out(
-            conv2d_size_out(
-                conv2d_size_out(self.input_height, kernel=8, stride=4),
-                kernel=4,
-                stride=2,
-            ),
-            kernel=3,
-            stride=1,
-        )
+        convh = conv2d_size_out(frame_h, kernel=6, stride=3)
+        convh = conv2d_size_out(convh, kernel=4, stride=2)
+        convh = conv2d_size_out(convh, kernel=4, stride=1)
 
-        # Conv output width * conv output height * conv output channels
-        self.linear_input_size = convw * convh * 64
+        convw = conv2d_size_out(frame_w, kernel=6, stride=3)
+        convw = conv2d_size_out(convw, kernel=4, stride=2)
+        convw = conv2d_size_out(convw, kernel=4, stride=1)
 
-        # One hidden linear layer
-        self.hidden = nn.Linear(self.linear_input_size, self.hidden_neurons)
+        linear_input = convh * convw * 64
 
-        # A fully connected layer for the output
-        self.head = nn.Linear(self.hidden_neurons, self.outputs)
+        self.fc1 = nn.Linear(linear_input, 256)
+        self.head = nn.Linear(256, num_actions)
 
-    # NN forward pass
-    def forward(self, x: torch.Tensor) -> float:
-        """
-        Forward pass of the network
-
-        Input tensors should have the following shape: (batch_size, image_channels, image_height, image_width)
-        """
-        # TODO should we use maxpooling? or any other pooling?
-        x = F.relu(self.bn1(self.conv1(x)))
-        x = F.relu(self.bn2(self.conv2(x)))
-        x = F.relu(self.bn3(self.conv3(x)))
-        x = F.relu(self.hidden(x.view(x.size(0), -1)))
-        return self.head(x)
-
-    # TODO add best action function
+    def forward(self, x):
+        x = F.leaky_relu(self.bn1(self.conv1(x)))
+        x = F.leaky_relu(self.bn2(self.conv2(x)))
+        x = F.leaky_relu(self.bn3(self.conv3(x)))
+        x = F.leaky_relu(self.fc1(x.view(x.size(0), -1)))
+        x = self.head(x) * 15
+        return x
