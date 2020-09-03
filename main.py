@@ -1,9 +1,10 @@
 import gym
 import matplotlib.pyplot as plt
 import numpy as np
-from gym.wrappers import AtariPreprocessing, FrameStack, TransformObservation
+from gym.wrappers import AtariPreprocessing, FrameStack
 from torch.optim import Adam
 
+from autonomous_systems_project.callbacks import log_stdout
 from autonomous_systems_project.dqn import AtariDQN, SimpleDQN
 from autonomous_systems_project.memory import RandomReplayMemory
 from autonomous_systems_project.policy import epsilon_greedy
@@ -31,8 +32,9 @@ train_dqn(
     target_net,
     optimizer,
     memory,
-    gamma=0.9,
+    gamma=0.5,
     batch_size=128,
     epsilon_steps=1000,
     episodes=1000,
+    callbacks=[log_stdout],
 )

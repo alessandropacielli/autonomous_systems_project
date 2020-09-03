@@ -58,7 +58,7 @@ def optimize_model(
     )
 
     # Compute the max q-values for non final next states only
-    next_state_values = torch.zeros(batch_size, device=device)
+    next_state_values = torch.ones(batch_size, device=device) * -1
     next_state_values[non_final_mask] = (
         target_net(non_final_next_states).max(dim=1)[0].float().detach()
     )
@@ -95,6 +95,7 @@ def train_dqn(
     epsilon_start=0.9,
     epsilon_end=0.05,
     epsilon_steps=1000000,
+    callbacks=[],
 ):
 
     # TODO handle preconditions (assert)
@@ -106,7 +107,9 @@ def train_dqn(
     # Do not compute gradients for target_net
     target_net.eval()
 
-    total_rewards = []
+    reward_history = []
+    loss_history = []
+
     total_steps = 0
 
     epsilon = epsilon_start
@@ -120,8 +123,8 @@ def train_dqn(
             .view((1,) + policy_net.input_shape)
         )
 
-        total_rewards.append(0)
-        loss = 0
+        reward_history.append(0)
+        loss_history.append([])
 
         while not done:
 
@@ -130,7 +133,7 @@ def train_dqn(
 
             next_state, reward, done, _ = env.step(action)
 
-            total_rewards[episode] += reward
+            reward_history[episode] += reward
 
             action_tensor = torch.tensor(action, device=device, dtype=torch.int64)
             reward_tensor = torch.tensor(reward, device=device, dtype=torch.float)
@@ -148,6 +151,7 @@ def train_dqn(
                 loss = optimize_model(
                     policy_net, target_net, optimizer, memory, batch_size, gamma
                 )
+                loss_history[episode].append(loss.item())
 
             if total_steps % target_update == 0:
                 target_net.load_state_dict(policy_net.state_dict())
@@ -156,14 +160,18 @@ def train_dqn(
             epsilon = update_epsilon(
                 epsilon_start, epsilon_end, epsilon_steps, total_steps
             )
-        print(
-            "{}/{} Total steps: {} Episode reward: {} Average reward: {} Loss: {} Epsilon: {}".format(
-                episode,
-                episodes,
-                total_steps,
-                total_rewards[episode],
-                np.mean(total_rewards),
-                loss,
-                epsilon,
+
+        for callback in callbacks:
+            callback(
+                {
+                    "episode": episode,
+                    "num_episodes": episodes,
+                    "total_steps": total_steps,
+                    "epsilon": epsilon,
+                    "policy_net": policy_net,
+                    "target_net": target_net,
+                    "optimizer": optimizer,
+                    "reward_history": reward_history,
+                    "loss_history": loss_history,
+                }
             )
-        )
