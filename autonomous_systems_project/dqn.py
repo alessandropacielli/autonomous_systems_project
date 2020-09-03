@@ -22,6 +22,9 @@ class AtariDQN(nn.Module):
         """
         super(AtariDQN, self).__init__()
 
+        self.input_shape = (input_channels, frame_h, frame_w)
+
+        # Convolutional layers
         self.conv1 = nn.Conv2d(input_channels, 32, kernel_size=6, stride=3)
         self.bn1 = nn.BatchNorm2d(32)
         self.conv2 = nn.Conv2d(32, 64, kernel_size=4, stride=2)
@@ -33,6 +36,7 @@ class AtariDQN(nn.Module):
         def conv2d_size_out(size, kernel=5, stride=2) -> int:
             return (size - kernel) // stride + 1
 
+        # Compute number of inputs for dense layer
         convh = conv2d_size_out(frame_h, kernel=6, stride=3)
         convh = conv2d_size_out(convh, kernel=4, stride=2)
         convh = conv2d_size_out(convh, kernel=4, stride=1)
@@ -43,6 +47,7 @@ class AtariDQN(nn.Module):
 
         linear_input = convh * convw * 64
 
+        # Dense layer and output
         self.fc1 = nn.Linear(linear_input, 512)
         self.head = nn.Linear(512, num_actions)
 
@@ -54,6 +59,9 @@ class AtariDQN(nn.Module):
         x = self.head(x) * 15
         return x
 
+    def input_shape(self):
+        return self.input_shape
+
 
 class SimpleDQN(nn.Module):
     def __init__(self, num_inputs: int, num_actions: int):
@@ -62,6 +70,9 @@ class SimpleDQN(nn.Module):
 
         """
         super(SimpleDQN, self).__init__()
+
+        self.input_shape = num_inputs
+
         self.fc1 = nn.Linear(num_inputs, 256)
         self.fc2 = nn.Linear(256, 64)
         self.head = nn.Linear(64, num_actions)
@@ -71,3 +82,6 @@ class SimpleDQN(nn.Module):
         x = F.leaky_relu(self.fc2(x))
         x = F.leaky_relu(self.head(x))
         return x
+
+    def input_shape(self):
+        return self.input_shape
