@@ -175,3 +175,6 @@ def train_dqn(
                     "loss_history": loss_history,
                 }
             )
+
+    for callback in callbacks:
+        callback.close()
