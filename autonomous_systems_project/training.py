@@ -38,7 +38,7 @@ def optimize_model(
 
     # Convert transitions to tensors
     state_batch = torch.stack(state_batch)
-    state_batch = state_batch.view((batch_size, frame_stack, frame_h, frame_w))
+    state_batch = state_batch.view((batch_size,) + policy_net.input_shape)
     action_batch = torch.stack(action_batch)
     reward_batch = torch.stack(reward_batch)
     non_final_next_states = torch.cat([s for s in next_state_batch if s is not None])
@@ -117,7 +117,7 @@ def train_dqn(
         state = (
             torch.tensor(env.reset(), device=device)
             .float()
-            .view(1, frame_stack, frame_h, frame_w)
+            .view((1,) + policy_net.input_shape)
         )
 
         total_rewards.append(0)
@@ -136,7 +136,7 @@ def train_dqn(
             reward_tensor = torch.tensor(reward, device=device, dtype=torch.float)
             next_state = torch.tensor(
                 next_state, device=device, dtype=torch.float
-            ).view(1, frame_stack, frame_h, frame_w)
+            ).view((1,) + policy_net.input_shape)
             if done:
                 next_state = None
 

@@ -59,9 +59,6 @@ class AtariDQN(nn.Module):
         x = self.head(x) * 15
         return x
 
-    def input_shape(self):
-        return self.input_shape
-
 
 class SimpleDQN(nn.Module):
     def __init__(self, num_inputs: int, num_actions: int):
@@ -71,7 +68,7 @@ class SimpleDQN(nn.Module):
         """
         super(SimpleDQN, self).__init__()
 
-        self.input_shape = num_inputs
+        self.input_shape = (num_inputs,)
 
         self.fc1 = nn.Linear(num_inputs, 256)
         self.fc2 = nn.Linear(256, 64)
@@ -82,6 +79,3 @@ class SimpleDQN(nn.Module):
         x = F.leaky_relu(self.fc2(x))
         x = F.leaky_relu(self.head(x))
         return x
-
-    def input_shape(self):
-        return self.input_shape
