@@ -95,6 +95,7 @@ def train_dqn(
     epsilon_start=0.9,
     epsilon_end=0.05,
     epsilon_steps=1000000,
+    render=False,
     callbacks=[],
 ):
 
@@ -128,7 +129,9 @@ def train_dqn(
 
         while not done:
 
-            # env.render()
+            if render:
+                env.render()
+
             action = epsilon_greedy(state, env, policy_net, epsilon)
 
             next_state, reward, done, _ = env.step(action)
