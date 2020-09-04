@@ -58,7 +58,7 @@ def optimize_model(
     )
 
     # Compute the max q-values for non final next states only
-    next_state_values = torch.ones(batch_size, device=device) * -1
+    next_state_values = torch.ones(batch_size, device=device)
     next_state_values[non_final_mask] = (
         target_net(non_final_next_states).max(dim=1)[0].float().detach()
     )
