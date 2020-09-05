@@ -12,7 +12,7 @@ class LogToStdout(Callback):
         print(
             "Episode %d/%d - total steps %d  - reward %f - avg total rewards %f - epsilon %f - loss %f"
             % (
-                state["episode"],
+                state["episode"] + 1,
                 state["num_episodes"],
                 state["total_steps"],
                 state["reward_history"][episode],
