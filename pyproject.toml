@@ -5,7 +5,7 @@ description = ""
 authors = ["Alessandro Pacielli <alessandropacielli@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.6.1"
 torch = "^1.6.0"
 torchvision = "^0.7.0"
 gym = "^0.17.2"
