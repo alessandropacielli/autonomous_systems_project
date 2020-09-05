@@ -74,6 +74,9 @@ def optimize_model(
     # Optimize the model
     optimizer.zero_grad()
     loss.backward()
+    # Gradient clipping
+    for param in policy_net.parameters():
+        param.grad.data.clamp_(-1, 1)
     optimizer.step()
 
     return loss
