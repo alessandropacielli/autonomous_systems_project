@@ -143,7 +143,7 @@ class DQNAgent:
     def _update_exploration_rate(self):
         self.exploration_rate = self.exploration_min + (
             self.exploration_max - self.exploration_min
-        ) * math.exp(-1.0 * self.steps)
+        ) * math.exp(-1.0 * self.steps / self.exploration_steps)
 
     def optimize_model(self):
         # Update target DQN every `target_update` steps
