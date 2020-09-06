@@ -7,7 +7,7 @@ from gym.wrappers import FrameStack, GrayScaleObservation, Monitor, TransformObs
 from torch.optim import Adam
 
 import autonomous_systems_project.callbacks as cb
-from autonomous_systems_project.agents.dqn import DQNAgent, SimpleDQN
+from autonomous_systems_project.agents import DQNAgent, SimpleDQN
 from autonomous_systems_project.memory import RandomReplayMemory
 
 env = gym.make("CartPole-v1")
@@ -22,12 +22,14 @@ gamma = 0.9
 batch_size = 32
 epsilon_steps = 1000
 memory_size = 10000
-episodes = 100
+episodes = 200
 lr = 0.001
-target_update = 10
+target_update = 5
+
+callbacks = [cb.LogToStdout()]
 
 memory = RandomReplayMemory(memory_size, env.observation_space.shape)
-agent = DQNAgent(
+agent = DoubleDQNAgent(
     env,
     memory,
     policy_net,
@@ -35,5 +37,6 @@ agent = DQNAgent(
     lr=lr,
     batch_size=batch_size,
     target_update=target_update,
+    callbacks=callbacks,
 )
-agent.train(num_episodes=episodes)
+agent.train(num_episodes=episodes, render=True)
