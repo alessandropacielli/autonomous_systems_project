@@ -15,12 +15,14 @@ class LogToMLFlow(Callback):
     def __call__(self, state):
         episode = state["episode"]
         mlflow.log_metric("Reward", state["reward_history"][episode], episode)
-        mlflow.log_metric("Reward avg", np.mean(state["reward_history"]), episode)
+        mlflow.log_metric("Reward (avg)", np.mean(state["reward_history"]), episode)
         mlflow.log_metric(
-            "Reward avg - last 100", np.mean(state["reward_history"][-100:]), episode
+            "Reward avg (last 100)", np.mean(state["reward_history"][-100:]), episode
         )
         if len(state["loss_history"][episode]) > 0:
-            mlflow.log_metric("Loss", np.mean(state["loss_history"][episode]), episode)
+            mlflow.log_metric(
+                "Loss (avg)", np.mean(state["loss_history"][episode]), episode
+            )
             mlflow.log_metric(
                 "Max loss", np.max(state["loss_history"][episode]), episode
             )
