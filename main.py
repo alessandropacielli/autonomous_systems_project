@@ -29,7 +29,7 @@ target_update = 5
 callbacks = [cb.LogToStdout()]
 
 memory = RandomReplayMemory(memory_size, env.observation_space.shape)
-agent = DoubleDQNAgent(
+agent = DQNAgent(
     env,
     memory,
     policy_net,
