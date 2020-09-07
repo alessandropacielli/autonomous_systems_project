@@ -163,6 +163,13 @@ class DQNAgent:
             done_batch,
         ) = self.memory.sample(self.batch_size)
 
+        # Send to GPU
+        state_batch = state_batch.to(self.device)
+        action_batch = action_batch.to(self.device)
+        reward_batch = reward_batch.to(self.device)
+        next_state_batch = next_state_batch.to(self.device)
+        done_batch = done_batch.to(self.device)
+
         # Zero optimizer gradients
         self.optimizer.zero_grad()
 
