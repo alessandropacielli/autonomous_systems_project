@@ -7,24 +7,32 @@ from gym.wrappers import FrameStack, GrayScaleObservation, Monitor, TransformObs
 from torch.optim import Adam
 
 import autonomous_systems_project.callbacks as cb
-from autonomous_systems_project.agents import DoubleDQNAgent, DQNAgent, SimpleDQN
+from autonomous_systems_project.agents import (
+    ActorCriticAgent,
+    DoubleDQNAgent,
+    DQNAgent,
+    SimpleActorNetwork,
+    SimpleCriticNetwork,
+    SimpleDQN,
+)
 from autonomous_systems_project.memory import RandomReplayMemory
 
 env = gym.make("CartPole-v1")
 env = TransformObservation(env, lambda obs: np.array(obs).astype(np.float32))
 
-policy_net = SimpleDQN(4, env.action_space.n)
-target_net = SimpleDQN(4, env.action_space.n)
-target_net.load_state_dict(policy_net.state_dict())
-
+actor_net = SimpleActorNetwork(4, env.action_space.n)
+critic_net = SimpleCriticNetwork(4)
+target_critic_net = SimpleCriticNetwork(4)
+target_critic_net.load_state_dict(critic_net.state_dict())
 
 gamma = 0.9
-batch_size = 32
-epsilon_steps = 1000
+batch_size = 128
+epsilon_steps = 100000
 memory_size = 10000
-episodes = 500
-lr = 0.001
-target_update = 5
+episodes = 10000
+actor_lr = 0.0025
+critic_lr = 0.0025
+target_update = 15
 
 parameters = {
     "env": env.unwrapped.spec.id,
@@ -33,22 +41,25 @@ parameters = {
     "epsilon_steps": epsilon_steps,
     "memory_size": memory_size,
     "episodes": episodes,
-    "lr": lr,
+    "actor_lr": actor_lr,
+    "critic_lr": critic_lr,
     "target_update": target_update,
 }
 
 callbacks = [
     cb.LogToStdout(),
-    cb.LogToMLFlow("dqn", parameters, run_name="DQN - Cartpole"),
+    cb.LogToMLFlow(parameters, run_name="Actor Critic - Cartpole"),
 ]
 
 memory = RandomReplayMemory(memory_size, env.observation_space.shape)
-agent = DQNAgent(
+agent = ActorCriticAgent(
     env,
     memory,
-    policy_net,
-    target_net,
-    lr=lr,
+    actor_net,
+    critic_net,
+    target_critic_net,
+    actor_lr=actor_lr,
+    critic_lr=critic_lr,
     batch_size=batch_size,
     target_update=target_update,
     callbacks=callbacks,
