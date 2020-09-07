@@ -190,57 +190,61 @@ class DQNAgent:
         return loss.item()
 
     def train(self, num_episodes, render=False):
-        for episode in tqdm(range(num_episodes)):
+        try:
+            for episode in tqdm(range(num_episodes)):
 
-            state = self.env.reset()
-            state = torch.tensor(state)
+                state = self.env.reset()
+                state = torch.tensor(state)
 
-            episode_reward = 0
-            episode_loss = []
+                episode_reward = 0
+                episode_loss = []
 
-            done = False
-            while not done:
+                done = False
+                while not done:
 
-                if render:
-                    self.env.render()
+                    if render:
+                        self.env.render()
 
-                self.steps += 1
-                action = self.select_action(state.view((1,) + self.state_shape))
+                    self.steps += 1
+                    action = self.select_action(state.view((1,) + self.state_shape))
 
-                next_state, reward, done, info = self.env.step(int(action))
+                    next_state, reward, done, info = self.env.step(int(action))
 
-                next_state_tensor = torch.tensor(next_state)
-                reward_tensor = torch.tensor(reward)
-                done_tensor = torch.tensor(int(done)).unsqueeze(0)
+                    next_state_tensor = torch.tensor(next_state)
+                    reward_tensor = torch.tensor(reward)
+                    done_tensor = torch.tensor(int(done)).unsqueeze(0)
 
-                self.memory.push(
-                    state, action, reward_tensor, next_state_tensor, done_tensor
-                )
+                    self.memory.push(
+                        state, action, reward_tensor, next_state_tensor, done_tensor
+                    )
 
-                loss = self.optimize_model()
+                    loss = self.optimize_model()
 
-                if loss is not None:
-                    episode_loss.append(loss)
+                    if loss is not None:
+                        episode_loss.append(loss)
 
-                episode_reward += reward
+                    episode_reward += reward
 
-                # Transition to next state
-                state = next_state_tensor
+                    # Transition to next state
+                    state = next_state_tensor
 
-            self.reward_history.append(episode_reward)
-            self.loss_history.append(episode_loss)
-            self.episodes += 1
+                self.reward_history.append(episode_reward)
+                self.loss_history.append(episode_loss)
+                self.episodes += 1
 
+                for callback in self.callbacks:
+                    callback(
+                        {
+                            "episode": self.episodes,
+                            "total_steps": self.steps,
+                            "epsilon": self.exploration_rate,
+                            "policy_net": self.policy_net,
+                            "target_net": self.target_net,
+                            "optimizer": self.optimizer,
+                            "reward_history": self.reward_history,
+                            "loss_history": self.loss_history,
+                        }
+                    )
+        finally:
             for callback in self.callbacks:
-                callback(
-                    {
-                        "episode": self.episodes,
-                        "total_steps": self.steps,
-                        "epsilon": self.exploration_rate,
-                        "policy_net": self.policy_net,
-                        "target_net": self.target_net,
-                        "optimizer": self.optimizer,
-                        "reward_history": self.reward_history,
-                        "loss_history": self.loss_history,
-                    }
-                )
+                callback.close()
