@@ -6,11 +6,9 @@ from autonomous_systems_project.callbacks.common import Callback
 
 class LogToMLFlow(Callback):
     def __init__(self, parameters: dict, tracking_uri=None, run_name=None):
-
-        mlflow.start_run(run_name=run_name)
-
         if tracking_uri is not None:
             mlflow.set_tracking_uri(tracking_uri)
+        mlflow.start_run(run_name=run_name)
 
         mlflow.log_params(parameters)
 
