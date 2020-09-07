@@ -6,12 +6,12 @@ from autonomous_systems_project.callbacks.common import Callback
 
 class LogToMLFlow(Callback):
     def __init__(self, experiment, parameters: dict, tracking_uri=None, run_name=None):
+
+        mlflow.set_experiment(experiment)
         mlflow.start_run(run_name=run_name)
 
         if tracking_uri is not None:
             mlflow.set_tracking_uri(tracking_uri)
-
-        mlflow.set_experiment(experiment)
 
         mlflow.log_params(parameters)
 
