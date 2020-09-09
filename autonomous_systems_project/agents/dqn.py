@@ -6,6 +6,8 @@ import torch
 import torch.nn as nn
 from tqdm import tqdm
 
+from autonomous_systems_project.agents.common import Agent
+
 
 class SimpleDQN(nn.Module):
     def __init__(self, num_inputs: int, num_actions: int):
@@ -13,12 +15,6 @@ class SimpleDQN(nn.Module):
         Constructs a DQN for problems with 1-dimensional inputs.
         """
         super(SimpleDQN, self).__init__()
-
-        self.input_shape = (num_inputs,)
-
-        self.fc1 = nn.Linear(num_inputs, 256)
-        self.fc2 = nn.Linear(256, 64)
-        self.head = nn.Linear(64, num_actions)
 
         self.fc = nn.Sequential(
             nn.Linear(num_inputs, 256),
@@ -66,7 +62,7 @@ class AtariDQN(nn.Module):
         return self.fc(conv_out)
 
 
-class DQNAgent:
+class DQNAgent(Agent):
     def __init__(
         self,
         env,
@@ -126,6 +122,18 @@ class DQNAgent:
 
         # Callbacks
         self.callbacks = callbacks
+
+    def get_metrics(self):
+        episode = self.episodes
+        return {
+            "episode": episode,
+            "step": self.steps,
+            "episode_reward": self.reward_history[episode - 1],
+            "average_reward": np.mean(self.reward_history),
+            "average_reward_last_100": np.mean(self.reward_history[-100:]),
+            "episode_loss": np.mean(self.loss_history[episode - 1]),
+            "exploration_rate": self.exploration_rate,
+        }
 
     def select_action(self, state):
         self.steps += 1
@@ -239,19 +247,7 @@ class DQNAgent:
                 self.loss_history.append(episode_loss)
                 self.episodes += 1
 
-                for callback in self.callbacks:
-                    callback(
-                        {
-                            "episode": self.episodes,
-                            "total_steps": self.steps,
-                            "epsilon": self.exploration_rate,
-                            "policy_net": self.policy_net,
-                            "target_net": self.target_net,
-                            "optimizer": self.optimizer,
-                            "reward_history": self.reward_history,
-                            "loss_history": self.loss_history,
-                        }
-                    )
+                self.invoke_callbacks()
+
         finally:
-            for callback in self.callbacks:
-                callback.close()
+            self.close_callbacks()

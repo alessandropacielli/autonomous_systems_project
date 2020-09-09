@@ -1,15 +1,18 @@
 import math
 import random
 
+import numpy as np
 import torch
 import torch.nn as nn
 from torch.distributions import Categorical
 from tqdm import tqdm
 
+from autonomous_systems_project.agents.common import Agent
+
 
 class AtariCriticNetwork(nn.Module):
     def __init__(self, input_shape):
-        super(AtariDQN, self).__init__()
+        super(AtariCriticNetwork, self).__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
             nn.ReLU(),
@@ -42,7 +45,7 @@ class AtariCriticNetwork(nn.Module):
 
 class AtariActorNetwork(nn.Module):
     def __init__(self, input_shape, num_actions):
-        super(AtariDQN, self).__init__()
+        super(AtariActorNetwork, self).__init__()
         self.conv = nn.Sequential(
             nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
             nn.ReLU(),
@@ -111,7 +114,7 @@ class SimpleActorNetwork(nn.Module):
         return distribution
 
 
-class ActorCriticAgent:
+class ActorCriticAgent(Agent):
     def __init__(
         self,
         env,
@@ -162,9 +165,24 @@ class ActorCriticAgent:
         self.steps = 0
         self.episodes = 0
         self.reward_history = []
+        self.critic_loss_history = []
+        self.actor_loss_history = []
 
         # Callbacks
         self.callbacks = callbacks
+
+    def get_metrics(self):
+        episode = self.episodes
+        return {
+            "episode": episode,
+            "step": self.steps,
+            "episode_reward": self.reward_history[episode - 1],
+            "average_reward": np.mean(self.reward_history),
+            "average_reward_last_100": np.mean(self.reward_history[-100:]),
+            "episode_actor_loss": self.actor_loss_history[episode - 1],
+            "episode_critic_loss": self.critic_loss_history[episode - 1],
+            "exploration_rate": self.exploration_rate,
+        }
 
     def train(self, num_episodes, render=False):
         try:
@@ -174,6 +192,8 @@ class ActorCriticAgent:
                 state = torch.tensor(state, device=self.device)
 
                 episode_reward = 0
+                episode_actor_loss = []
+                episode_critic_loss = []
 
                 done = False
                 while not done:
@@ -222,22 +242,15 @@ class ActorCriticAgent:
                     # Transition to next state
                     state = next_state_tensor
                     episode_reward += reward
+                    episode_actor_loss.append(actor_loss.item())
+                    episode_critic_loss.append(critic_loss.item())
 
                 self.reward_history.append(episode_reward)
+                self.actor_loss_history.append(np.mean(episode_actor_loss))
+                self.critic_loss_history.append(np.mean(episode_critic_loss))
                 self.episodes += 1
 
-                for callback in self.callbacks:
-                    callback(
-                        {
-                            "episode": self.episodes,
-                            "total_steps": self.steps,
-                            "actor_net": self.actor_net,
-                            "critic_net": self.critic_net,
-                            "actor_optimizer": self.actor_optimizer,
-                            "critic_optimizer": self.critic_optimizer,
-                            "reward_history": self.reward_history,
-                        }
-                    )
+                self.invoke_callbacks()
+
         finally:
-            for callback in self.callbacks:
-                callback.close()
+            self.close_callbacks()

@@ -9,19 +9,6 @@ class LogToTensorboard(Callback):
         super().__init__()
         self.writer = SummaryWriter(**kwargs)
 
-    def __call__(self, state):
-        episode = state["episode"]
-        self.writer.add_scalar("Reward", state["reward_history"][episode], episode)
-        self.writer.add_scalar(
-            "Reward (avg)", np.mean(state["reward_history"]), episode
-        )
-        self.writer.add_scalar(
-            "Reward (avg, last 100)", np.mean(state["reward_history"][-100:]), episode
-        )
-        if len(state["loss_history"][episode]) > 0:
-            self.writer.add_scalar(
-                "Loss", np.mean(state["loss_history"][episode]), episode
-            )
-            self.writer.add_scalar(
-                "Loss (max)", np.max(state["loss_history"][episode]), episode
-            )
+    def __call__(self, agent):
+        for key, value in agent.get_metrics().items():
+            self.writer.add_scalar(key, value)
