@@ -123,9 +123,6 @@ class ActorCriticAgent(Agent):
         actor_lr=0.00025,
         critic_lr=0.00025,
         gamma=0.9,
-        exploration_max=0.9,
-        exploration_min=0.002,
-        exploration_steps=1000000,
         callbacks=[],
     ):
         super().__init__()
@@ -156,10 +153,6 @@ class ActorCriticAgent(Agent):
         self.loss_fn = nn.SmoothL1Loss().to(
             self.device
         )  # Also known as Huber loss <-- TODO loss choice
-        self.exploration_max = exploration_max
-        self.exploration_rate = exploration_max
-        self.exploration_min = exploration_min
-        self.exploration_steps = exploration_steps
 
         # Counters and stats
         self.steps = 0
@@ -181,7 +174,6 @@ class ActorCriticAgent(Agent):
             "average_reward_last_100": np.mean(self.reward_history[-100:]),
             "episode_actor_loss": self.actor_loss_history[episode - 1],
             "episode_critic_loss": self.critic_loss_history[episode - 1],
-            "exploration_rate": self.exploration_rate,
         }
 
     def train(self, num_episodes, render=False):
@@ -215,11 +207,14 @@ class ActorCriticAgent(Agent):
 
                     # Optimize critic
                     self.critic_optimizer.zero_grad()
-                    next_state_value = self.critic_net(next_state_tensor)
 
                     # If using a semi-gradient method to train the critic, the target values shouldn't be used in the computation of the gradient
-                    # The parameter update we're trying to achieve is w_t+1 <- w_t + (R_t+1 + v(S_t+1, w_t) - v(S_t, w_t))∇v(S_t, w_t)
-                    next_state_value.detach()
+                    # The parameter update we're trying to get is w_t+1 <- w_t + (R_t+1 + v(S_t+1, w_t) - v(S_t, w_t))∇v(S_t, w_t)
+                    with torch.no_grad():
+                        next_state_value = self.critic_net(next_state_tensor)
+
+                    next_state_value = next_state_value.detach()
+
                     critic_target = reward_tensor + self.gamma * next_state_value * (
                         1 - done_tensor
                     )
