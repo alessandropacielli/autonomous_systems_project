@@ -101,11 +101,11 @@ class SimpleActorNetwork(nn.Module):
         super(SimpleActorNetwork, self).__init__()
 
         self.fc = nn.Sequential(
-            nn.Linear(num_inputs, 256),
+            nn.Linear(num_inputs, 64),
             nn.LeakyReLU(),
-            nn.Linear(256, 64),
+            nn.Linear(64, 32),
             nn.LeakyReLU(),
-            nn.Linear(64, num_actions),
+            nn.Linear(32, num_actions),
             nn.Softmax(),
         )
 
