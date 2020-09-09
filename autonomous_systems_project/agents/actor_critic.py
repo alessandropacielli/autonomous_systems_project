@@ -7,6 +7,76 @@ from torch.distributions import Categorical
 from tqdm import tqdm
 
 
+class AtariCriticNetwork(nn.Module):
+    def __init__(self, input_shape):
+        super(AtariDQN, self).__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.ReLU(),
+        )
+
+        conv_out_size = self._get_conv_out(input_shape)
+        self.fc = nn.Sequential(
+            nn.Linear(conv_out_size, 512), nn.ReLU(), nn.Linear(512, 1)
+        )
+
+    def _get_conv_out(self, shape):
+        # Computes the output of the convolutional layers "empirically"
+        o = self.conv(torch.zeros(1, *shape))
+        return int(np.prod(o.size()))
+
+    def forward(self, x):
+        # Compute convolution
+        conv_out = self.conv(x)
+
+        # Reshape according to batch dimension
+        conv_out = conv_out.view(x.size()[0], -1)
+
+        # Compute dense layer
+        return self.fc(conv_out)
+
+
+class AtariActorNetwork(nn.Module):
+    def __init__(self, input_shape, num_actions):
+        super(AtariDQN, self).__init__()
+        self.conv = nn.Sequential(
+            nn.Conv2d(input_shape[0], 32, kernel_size=8, stride=4),
+            nn.ReLU(),
+            nn.Conv2d(32, 64, kernel_size=4, stride=2),
+            nn.ReLU(),
+            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.ReLU(),
+        )
+
+        conv_out_size = self._get_conv_out(input_shape)
+        self.fc = nn.Sequential(
+            nn.Linear(conv_out_size, 512),
+            nn.ReLU(),
+            nn.Linear(512, num_actions),
+            nn.Softmax(),
+        )
+
+    def _get_conv_out(self, shape):
+        # Computes the output of the convolutional layers "empirically"
+        o = self.conv(torch.zeros(1, *shape))
+        return int(np.prod(o.size()))
+
+    def forward(self, x):
+        # Compute convolution
+        conv_out = self.conv(x)
+
+        # Reshape according to batch dimension
+        conv_out = conv_out.view(x.size()[0], -1)
+
+        # Compute dense layer
+        probs = self.fc(conv_out)
+        return Categorical(probs)
+
+
 class SimpleCriticNetwork(nn.Module):
     def __init__(self, num_inputs: int):
         super(SimpleCriticNetwork, self).__init__()
@@ -126,6 +196,10 @@ class ActorCriticAgent:
                     # Optimize critic
                     self.critic_optimizer.zero_grad()
                     next_state_value = self.critic_net(next_state_tensor)
+
+                    # If using a semi-gradient method to train the critic, the target values shouldn't be used in the computation of the gradient
+                    # The parameter update we're trying to achieve is w_t+1 <- w_t + (R_t+1 + v(S_t+1, w_t) - v(S_t, w_t))∇v(S_t, w_t)
+                    next_state_value.detach()
                     critic_target = reward_tensor + self.gamma * next_state_value * (
                         1 - done_tensor
                     )
