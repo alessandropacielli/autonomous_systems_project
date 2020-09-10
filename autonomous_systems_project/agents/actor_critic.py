@@ -101,11 +101,11 @@ class SimpleActorNetwork(nn.Module):
         super(SimpleActorNetwork, self).__init__()
 
         self.fc = nn.Sequential(
-            nn.Linear(num_inputs, 64),
+            nn.Linear(num_inputs, 256),
             nn.LeakyReLU(),
-            nn.Linear(64, 32),
+            nn.Linear(256, 64),
             nn.LeakyReLU(),
-            nn.Linear(32, num_actions),
+            nn.Linear(64, num_actions),
             nn.Softmax(),
         )
 
@@ -168,7 +168,6 @@ class ActorCriticAgent(Agent):
         episode = self.episodes
         return {
             "episode": episode,
-            "step": self.steps,
             "episode_reward": self.reward_history[episode - 1],
             "average_reward": np.mean(self.reward_history),
             "average_reward_last_100": np.mean(self.reward_history[-100:]),
@@ -210,10 +209,7 @@ class ActorCriticAgent(Agent):
 
                     # If using a semi-gradient method to train the critic, the target values shouldn't be used in the computation of the gradient
                     # The parameter update we're trying to get is w_t+1 <- w_t + (R_t+1 + v(S_t+1, w_t) - v(S_t, w_t))∇v(S_t, w_t)
-                    with torch.no_grad():
-                        next_state_value = self.critic_net(next_state_tensor)
-
-                    next_state_value = next_state_value.detach()
+                    next_state_value = self.critic_net(next_state_tensor).detach()
 
                     critic_target = reward_tensor + self.gamma * next_state_value * (
                         1 - done_tensor
