@@ -1,4 +1,4 @@
-# Deep reinforcement learning in PyTorch
+# Deep reinforcement learning with PyTorch
 This repo contains my project work for the Autonomous and Adaptive Systems course taught by professor Mirco Musolesi at the University of Bologna.
 
 ## Agents
