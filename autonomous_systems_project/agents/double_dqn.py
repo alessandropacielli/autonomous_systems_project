@@ -33,18 +33,18 @@ class DoubleDQNAgent(DQNAgent):
         self.optimizer.zero_grad()
 
         # Compute target state-action values
-        with torch.no_grad():
-            current_best_actions = (
-                self.policy_net(next_state_batch).argmax(dim=1).unsqueeze(1)
-            )
+        current_best_actions = (
+            self.policy_net(next_state_batch).argmax(dim=1).unsqueeze(1)
+        )
 
-            target_state_action_values = self.target_net(next_state_batch).gather(
-                1, current_best_actions.long()
-            )
-            expected_state_action_values = reward_batch + torch.mul(
-                (self.gamma * target_state_action_values), 1 - done_batch,
-            )
+        target_state_action_values = self.target_net(next_state_batch).gather(
+            1, current_best_actions.long()
+        )
+        expected_state_action_values = reward_batch + torch.mul(
+            (self.gamma * target_state_action_values), 1 - done_batch,
+        )
 
+        # Detach is needed to avoid computing the gradient of the target (semi-gradient)
         expected_state_action_values = expected_state_action_values.detach()
 
         # Compute state-action values from policy_net
