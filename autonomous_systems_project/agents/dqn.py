@@ -4,9 +4,8 @@ import random
 import numpy as np
 import torch
 import torch.nn as nn
-from tqdm import tqdm
-
 from autonomous_systems_project.agents.common import Agent
+from tqdm import tqdm
 
 
 class SimpleDQN(nn.Module):
@@ -218,7 +217,7 @@ class DQNAgent(Agent):
                 while not done:
 
                     if render:
-                        self.env.render()
+                        self.env.render(mode="ipython")
 
                     self.steps += 1
                     action = self.select_action(state.view((1,) + self.state_shape))
@@ -251,3 +250,26 @@ class DQNAgent(Agent):
 
         finally:
             self.close_callbacks()
+
+    
+class IllegalActionsDQNAgent(DQNAgent):
+    
+    def select_action(self, state):
+        self.steps += 1
+        if random.random() < self.exploration_rate:
+            action = torch.tensor(np.random.choice(self.env.legal_actions(), size=1)).float()
+        else:
+            q_values = self.policy_net(state.float().to(self.device))
+            # print("Q_values = " + str(q_values[0]))
+            illegal_indices = list(set(range(self.action_space)) - set(self.env.legal_actions()))
+            # print("Legal actions " + str(self.env.legal_actions()))
+            # print("Illegal indices" + str(illegal_indices))
+
+            q_values[0][illegal_indices] = float("-Inf")
+            # print("Q_values after filtering = " + str(q_values))
+
+            action = torch.tensor(torch.argmax(q_values).float().cpu())
+
+        
+        # print("Agent selected action {}".format(action))
+        return action
