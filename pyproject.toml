@@ -5,9 +5,7 @@ description = ""
 authors = ["Alessandro Pacielli <alessandropacielli@gmail.com>"]
 
 [tool.poetry.dependencies]
-python = "^3.6.1"
-torch = "^1.6.0"
-torchvision = "^0.7.0"
+python = "^3.7.9"
 gym = "^0.17.2"
 jupyter = "^1.0.0"
 numpy = "^1.19.1"
@@ -15,6 +13,9 @@ matplotlib = "^3.3.0"
 tqdm = "^4.48.2"
 mlflow = "^1.11.0"
 tensorboard = "^2.3.0"
+kaggle-environments = "^1.7.3"
+jupyterlab = "^2.2.9"
+torch = "^1.7.1"
 
 [tool.poetry.dev-dependencies]
 autopep8 = "^1.5.4"
